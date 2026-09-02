@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw, ImageFont
 from moviepy.editor import ImageClip
 
 # Configurações iniciais do Bot e do Flask (para manter o Render acordado)
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "SEU_TOKEN_AQUI")
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
