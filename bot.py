@@ -1,101 +1,91 @@
 import os
 import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask
-from PIL import Image, ImageDraw, ImageFont
+from threading import Thread
 
-# Configurações iniciais do Bot e do Flask
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-if not TOKEN:
-    raise Exception("Bot token is not defined")
-
+# Pega o token de forma segura direto das Variáveis de Ambiente do Render
+TOKEN = os.environ.get("TELEGRAM_TOKEN")
 bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
 
-@app.route("/")
+# Servidor web simples para o Render não dar Timeout
+app = Flask('')
+
+@app.route('/')
 def home():
-    return "Casify Bot está online e operando na nuvem!"
+    return "Bot Casify rodando com sucesso!"
 
-def processar_foto_produto(imagem_entrada, output_path="casify_post.jpg"):
-    """
-    Processa a foto real mantendo 100% da integridade de cores e texturas,
-    aplicando o template visual elegante do Casify ao redor da imagem.
-    """
-    # 1. Abre a imagem original garantindo fidelidade total de cores (RGB)
-    img = Image.open(imagem_entrada).convert("RGB")
-    
-    # Formato vertical ideal para redes sociais (1080x1920)
-    largura_alvo, altura_alvo = 1080, 1920
-    
-    # Redimensiona mantendo a proporção exata para não distorcer o produto
-    img.thumbnail((largura_alvo - 100, altura_alvo - 400), Image.Resampling.LANCZOS)
-    novo_w, novo_h = img.size
+def run_web():
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
 
-    # Cria o fundo elegante do Casify e centraliza o produto perfeitamente
-    fundo = Image.new("RGB", (largura_alvo, altura_alvo), (18, 18, 18))
-    offset_x = (largura_alvo - novo_w) // 2
-    offset_y = (altura_alvo - novo_h) // 2
-    fundo.paste(img, (offset_x, offset_y))
+# Menus e Funções do Bot
+def criar_menu_principal():
+    markup = InlineKeyboardMarkup(row_width=2)
+    b1 = InlineKeyboardButton("🎁 Criar Oferta", callback_data="btn_promocao")
+    b2 = InlineKeyboardButton("🔍 Buscar", callback_data="btn_buscar")
+    b3 = InlineKeyboardButton("🔗 Enviar Link", callback_data="btn_enviar_link")
+    b4 = InlineKeyboardButton("📊 Meu Plano", callback_data="btn_plano")
+    b5 = InlineKeyboardButton("🔑 API Shopee", callback_data="btn_api")
+    b6 = InlineKeyboardButton("🛠️ Suporte", callback_data="btn_suporte")
+    markup.add(b1, b2, b3, b4, b5, b6)
+    return markup
 
-    # 2. Adiciona o cabeçalho e marca d'água oficial do Casify
-    draw = ImageDraw.Draw(fundo)
-    try:
-        fonte = ImageFont.truetype("arial.ttf", 40)
-    except:
-        fonte = ImageFont.load_default()
-
-    # Faixa superior limpa
-    draw.rectangle([(40, 60), (1040, 160)], fill=(0, 0, 0, 200))
-    draw.text((70, 90), "✨ Casify • Achados Inteligentes", fill=(255, 255, 255), font=fonte)
-
-    # Salva a imagem final processada com alta qualidade
-    fundo.save(output_path, quality=95)
-    return output_path
-
-# --- Comandos e escuta do Telegram ---
-
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
-    bot.reply_to(message, "🚀 **Casify Online!** Envie a foto real do produto para gerarmos a postagem padrão de alta conversão com fidelidade total.")
+    texto = (
+        "🤖 **Casify - Painel**\n\n"
+        "Envie o seu link da Shopee para gerar a oferta no padrão profissional de descontos e Pix!\n\n"
+        "👇 **Escolha uma opção abaixo:**"
+    )
+    bot.send_message(message.chat.id, texto, reply_markup=criar_menu_principal(), parse_mode="Markdown")
 
-@bot.message_handler(content_types=['photo'])
-def handle_photo(message):
-    bot.reply_to(message, "⏳ Processando sua mídia com fidelidade total de cores e aplicando o padrão Casify...")
-    
-    input_img = "produto_original.jpg"
-    output_img = "produto_final.jpg"
-    
-    try:
-        # Pega a foto de maior resolução enviada
-        file_info = bot.get_file(message.photo[-1].file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    if call.data == "btn_promocao":
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, "🎁 Envie o link do produto para transformarmos em oferta:")
+    elif call.data == "btn_buscar":
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, "🔍 Digite o nome do produto que deseja buscar:")
+    elif call.data == "btn_enviar_link":
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, "🔗 Cole o seu link bruto da Shopee aqui.")
+    elif call.data == "btn_plano":
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, "📊 Plano Atual: Gratuito 🚀")
+    elif call.data == "btn_api":
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, "🔑 API da Shopee pendente. Usando links manuais por enquanto.")
+    elif call.data == "btn_suporte":
+        bot.answer_callback_query(call.id)
+        bot.send_message(call.message.chat.id, "🛠️ Suporte técnico à disposição!")
+
+@bot.message_handler(func=lambda message: True)
+def formatar_oferta(message):
+    link_original = message.text.strip()
+    if "http://" in link_original or "https://" in link_original:
+        link_afiliado = f"{link_original}?uls_trackid=seu_codigo_aqui"
         
-        with open(input_img, 'wb') as new_file:
-            new_file.write(downloaded_file)
-            
-        # Processa a imagem mantendo a integridade
-        resultado = processar_foto_produto(input_img, output_img)
+        # Estrutura completa atualizada com a marca Casify
+        texto_postagem = (
+            "PRECISAVA DESSA NO GARIMPO 🤌\n\n"
+            "✅ Kit 5 Camisetas Masculinas Slim Básicas\n\n"
+            "DE ~~R$ 239,00~~~\n"
+            "🔥 **POR R$ 112,29** 🔥 (53% OFF) no PIX\n\n"
+            "✨ *Casify*"
+        )
         
-        # Envia de volta a foto pronta para o Telegram
-        with open(resultado, 'rb') as foto_final:
-            bot.send_photo(message.chat.id, foto_final, caption="✅ **Postagem gerada com sucesso!** Produto preservado sem alterações de cor ou textura.")
-            
-    except Exception as e:
-        bot.reply_to(message, f"❌ Ocorreu um erro ao processar a imagem: {e}")
+        markup = InlineKeyboardMarkup()
+        botao_comprar = InlineKeyboardButton("🔗 CLIQUE PARA ABRIR O LINK", url=link_afiliado)
+        markup.add(botao_comprar)
         
-    finally:
-        # Limpeza de arquivos temporários locais
-        for f in [input_img, output_img]:
-            if os.path.exists(f):
-                os.remove(f)
+        bot.send_message(message.chat.id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+    else:
+        bot.reply_to(message, "⚠️ Digite `/menu` para abrir o painel ou envie um link válido.")
 
 if __name__ == "__main__":
-    # Inicializa o servidor Flask em paralelo (essencial para o Render)
-    import threading
-    def run_flask():
-        app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-        
-    t = threading.Thread(target=run_flask)
+    t = Thread(target=run_web)
     t.start()
     
-    # Inicia o bot
+    print("Bot Casify iniciado...")
     bot.infinity_polling()
