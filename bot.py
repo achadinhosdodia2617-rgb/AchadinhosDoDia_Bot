@@ -1,10 +1,23 @@
+import os
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from flask import Flask
+from threading import Thread
 
 TOKEN = "8656789314:AAGOGDKuiBhGetGTkbC__oL-BE6eAcJxGKw"
 bot = telebot.TeleBot(TOKEN)
 
-# Função para criar o Menu principal com botões estilizados (estilo Promovy)
+# Servidor web simples para o Render não dar Timeout
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot de Achadinhos rodando com sucesso!"
+
+def run_web():
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+
+# Menus e Funções do Bot
 def criar_menu_principal():
     markup = InlineKeyboardMarkup(row_width=2)
     b1 = InlineKeyboardButton("🎁 Promoção", callback_data="btn_promocao")
@@ -25,7 +38,6 @@ def send_welcome(message):
     )
     bot.send_message(message.chat.id, texto, reply_markup=criar_menu_principal(), parse_mode="Markdown")
 
-# Responde aos cliques nos botões do menu
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     if call.data == "btn_promocao":
@@ -42,43 +54,35 @@ def callback_query(call):
         bot.send_message(call.message.chat.id, "📊 Você está utilizando o plano gratuito do seu bot de achadinhos 🚀")
     elif call.data == "btn_api":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, "🔑 Para cadastrar sua API da Shopee, digite o comando `/cadastrar` seguido do seu AppID e Senha.")
+        bot.send_message(call.message.chat.id, "🔑 O acesso à API da Shopee está pendente no seu painel. Use os links manuais por enquanto.")
     elif call.data == "btn_suporte":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, "🛠️ Suporte técnico do bot configurado com sucesso!")
+        bot.send_message(call.message.chat.id, "🛠️ Suporte técnico pronto!")
 
-# Comando /cadastrar para simular o registro de credenciais
-@bot.message_handler(commands=['cadastrar'])
-def cadastrar_api(message):
-    bot.reply_to(
-        message,
-        "🔑 **Cadastro de Credenciais Shopee**\n\n"
-        "Para gerar promoções com o seu link de afiliado real, envie seus dados ou acesse o Portal do Afiliado da Shopee.",
-        parse_mode="Markdown"
-    )
-
-# Captura qualquer link enviado para transformar em oferta com botão
 @bot.message_handler(func=lambda message: True)
 def formatar_oferta(message):
     link_original = message.text.strip()
-    
     if "http://" in link_original or "https://" in link_original:
         link_afiliado = f"{link_original}?uls_trackid=seu_codigo_aqui"
-        
         texto_postagem = (
             "🔥 **ACHADINHO IMPERDÍVEL!** 🔥\n\n"
             "📦 Produto selecionado com excelente preço.\n"
             "🏃‍♂️ Corre que o estoque pode acabar rápido!\n\n"
             "👇 **Garanta o seu no link abaixo:**"
         )
-        
         markup = InlineKeyboardMarkup()
         botao_comprar = InlineKeyboardButton("🛒 COMPRAR AGORA", url=link_afiliado)
         markup.add(botao_comprar)
-        
         bot.send_message(message.chat.id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
     else:
         bot.reply_to(message, "⚠️ Digite `/menu` para abrir o painel de opções ou envie um link válido.")
 
-print("Bot com menu interativo iniciado...")
-bot.infinity_polling()
+if __name__ == "__main__":
+    # Inicia o servidor web em uma linha separada para o Render não derrubar
+    t = Thread(target=run_web)
+    t.start()
+    
+    # Inicia o bot do Telegram
+    print("Bot e servidor web iniciados...")
+    bot.infinity_polling()
+    
