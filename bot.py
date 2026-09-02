@@ -13,7 +13,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot AchadinhosDoDia rodando com sucesso!"
+    return "Bot Casify rodando com sucesso!"
 
 def run_web():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
@@ -33,7 +33,7 @@ def criar_menu_principal():
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     texto = (
-        "🤖 **AchadinhosDoDia - Painel**\n\n"
+        "🤖 **Casify - Painel**\n\n"
         "Envie o seu link da Shopee para gerar a oferta no padrão profissional de descontos e Pix!\n\n"
         "👇 **Escolha uma opção abaixo:**"
     )
@@ -66,13 +66,13 @@ def formatar_oferta(message):
     if "http://" in link_original or "https://" in link_original:
         link_afiliado = f"{link_original}?uls_trackid=seu_codigo_aqui"
         
-        # Estrutura completa inspirada nos modelos profissionais com Pix, % OFF e Marca
+        # Estrutura completa atualizada com a marca Casify
         texto_postagem = (
             "PRECISAVA DESSA NO GARIMPO 🤌\n\n"
             "✅ Kit 5 Camisetas Masculinas Slim Básicas\n\n"
             "DE ~~R$ 239,00~~~\n"
             "🔥 **POR R$ 112,29** 🔥 (53% OFF) no PIX\n\n"
-            "✨ *AchadinhosDoDia*"
+            "✨ *Casify*"
         )
         
         markup = InlineKeyboardMarkup()
@@ -87,5 +87,6 @@ if __name__ == "__main__":
     t = Thread(target=run_web)
     t.start()
     
-    print("Bot AchadinhosDoDia iniciado...")
+    print("Bot Casify iniciado...")
     bot.infinity_polling()
+    
