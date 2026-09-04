@@ -20,7 +20,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot Casify Avançado rodando com máxima estabilidade!"
+    return "Bot Casify Master (Ads & Pix Inteligente) rodando com sucesso!"
 
 def run_web():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
@@ -34,19 +34,31 @@ def escapar_markdown(texto):
         texto = texto.replace(c, f"\\{c}")
     return texto
 
-# Função para formatar o preço de forma limpa para o padrão brasileiro
+# Função para formatar o preço no padrão brasileiro
 def formatar_preco(preco_raw):
     try:
-        # Se vier como float ou string numérica
         preco_float = float(preco_raw)
         return f"R$ {preco_float:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except:
         return str(preco_raw)
 
-# Função universal para consultar a API com sistema de Tentativa Automática (Retry)
+# Função para expandir links curtos da Shopee (s.shopee.com.br) e extrair a URL limpa
+def expandir_link_shopee(url_curta):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.head(url_curta, allow_redirects=True, headers=headers, timeout=5)
+        url_final = response.url
+        url_limpa = url_final.split("?")[0]
+        return f"{url_limpa}?uls_trackid=casify_track"
+    except Exception as e:
+        print(f"Erro ao expandir link: {e}")
+        return url_curta
+
+# Consulta à API com sistema de Tentativa Automática (Retry) e extração de comissão
 def consultar_shopee_api(keyword, tentativas=3):
     url = "https://open-api.affiliate.shopee.com.br/graphql"
     
+    # Solicitamos também o campo commissionRate para identificar campanhas e anúncios fortes
     query_str = f"""
     {{
       productOfferV2(keyword: "{keyword}", limit: 1) {{
@@ -89,7 +101,7 @@ def consultar_shopee_api(keyword, tentativas=3):
                     return nodes[0]
         except Exception as e:
             print(f"Tentativa {tentativa_atual + 1} falhou: {e}")
-            time.sleep(1) # Aguarda 1 segundo antes de tentar novamente
+            time.sleep(1)
             
     return None
 
@@ -101,11 +113,11 @@ def gerar_frase_universal(keyword):
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     texto = (
-        "🤖 *Casify - Painel Privado Avançado*\n\n"
+        "🤖 *Casify - Painel Master Completo*\n\n"
         "Tudo pronto para operação em alta performance!\n\n"
         "💡 *Como usar:*\n"
-        "• Digite qualquer produto (ex: _Fone Bluetooth_, _Smartwatch_, _Tênis_) para buscar com imagem, preço formatado e link de afiliado.\n"
-        "• Ou envie o link direto da Shopee."
+        "• Digite qualquer produto para buscar com imagem, cálculo de desconto, destaque Pix e identificação de campanhas/Ads.\n"
+        "• Ou envie o link direto / encurtado da Shopee."
     )
     bot.send_message(message.chat.id, texto, parse_mode="Markdown")
 
@@ -113,16 +125,16 @@ def send_welcome(message):
 def processar_mensagem(message):
     texto_usuario = message.text.strip()
     
-    # Se enviou um link direto da Shopee
+    # Se enviou um link (curto ou longo da Shopee)
     if "http://" in texto_usuario or "https://" in texto_usuario:
-        bot.reply_to(message, "🔄 Processando link direto com rastreio de afiliado seguro...")
+        bot.reply_to(message, "🔄 Analisando link, ativando rastreio e verificando status de campanha...")
         
-        link_afiliado = texto_usuario.split("?")[0] + "?uls_trackid=casify_track"
+        link_afiliado = expandir_link_shopee(texto_usuario)
         
         texto_postagem = (
             "ACHADO IMPERDÍVEL NA SHOPEE 🔥\n\n"
-            "✅ Oferta Selecionada com Desconto Exclusivo\n\n"
-            "🔥 *OFERTA ESPECIAL LIBERADA* 🔥 no PIX\n\n"
+            "⭐ *PRODUTO EM DESTAQUE / PATROCINADO* ⭐\n\n"
+            "🔥 *OFERTA ESPECIAL COM DESCONTO NO PIX* 🔥\n\n"
             "✨ _Casify_"
         )
         
@@ -131,7 +143,7 @@ def processar_mensagem(message):
         bot.send_message(message.chat.id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
         
     else:
-        # Busca inteligente com retries automáticos
+        # Busca inteligente por palavra-chave
         bot.reply_to(message, f"🔍 Varrendo o catálogo da Shopee por '{texto_usuario}'...")
         
         produto = consultar_shopee_api(texto_usuario)
@@ -139,15 +151,51 @@ def processar_mensagem(message):
         if produto:
             nome_prod_raw = produto.get("productName", texto_usuario)
             preco_raw = produto.get("price", "Consulte")
+            preco_max_raw = produto.get("priceMax")
             imagem_url = produto.get("imageUrl")
             link_afiliado = produto.get("offerLink") or produto.get("productLink", "https://shopee.com.br")
+            comissao = produto.get("commissionRate", 0)
             
             # Formatações seguras
             nome_prod = escapar_markdown(nome_prod_raw)
             preco_formatado = formatar_preco(preco_raw)
             frase_topo = gerar_frase_universal(texto_usuario)
             
-            # Verifica se o produto tem indicações especiais no nome para incrementar o post
+            # Identificação inteligente de Ads / Campanhas Fortes baseado na comissão alta retornada pela API
+            tag_ads = ""
+            try:
+                # Se a comissão for expressiva, indica que o produto está recebendo forte investimento/patrocínio
+                if comissao and float(comissao) > 5.0: 
+                    tag_ads = "⭐ *PRODUTO EM DESTAQUE / PATROCINADO* ⭐\n"
+            except:
+                pass
+            
+            # Bloco inteligente de Preço, Desconto e Vantagem no PIX
+            bloco_preco = ""
+            try:
+                if preco_max_raw and float(preco_max_raw) > float(preco_raw):
+                    p_max = float(preco_max_raw)
+                    p_min = float(preco_raw)
+                    economia = int(((p_max - p_min) / p_max) * 100)
+                    de_formatado = formatar_preco(preco_max_raw)
+                    
+                    preco_pix = p_min * 0.95
+                    preco_pix_formatado = formatar_preco(preco_pix)
+                    
+                    bloco_preco = (
+                        f"DE ~~{de_formatado}~~\n"
+                        f"🔥 *POR {preco_formatado}* ({economia}% OFF)\n"
+                        f"⚡ *MENOR PREÇO NO PIX:* *{preco_pix_formatado}* 💸\n\n"
+                    )
+                else:
+                    bloco_preco = (
+                        f"🔥 *POR {preco_formatado}*\n"
+                        f"⚡ *MENOR PREÇO NO PIX* 💸\n\n"
+                    )
+            except:
+                bloco_preco = f"🔥 *POR {preco_formatado}* no PIX 🔥\n\n"
+            
+            # Tags extras baseadas no nome (como frete grátis)
             tag_extra = ""
             if "frete grátis" in nome_prod_raw.lower():
                 tag_extra = "🚚 *Frete Grátis Disponível*\n"
@@ -155,9 +203,10 @@ def processar_mensagem(message):
             # Montagem final da postagem profissional
             texto_postagem = (
                 f"{frase_topo}\n\n"
+                f"{tag_ads}"
                 f"{tag_extra}"
                 f"✅ {nome_prod}\n\n"
-                f"🔥 *POR {preco_formatado}* 🔥 no PIX\n\n"
+                f"{bloco_preco}"
                 "✨ _Casify_"
             )
             
@@ -190,5 +239,5 @@ if __name__ == "__main__":
     t = Thread(target=run_web)
     t.start()
     
-    print("Bot Casify Avançado iniciado com sucesso!")
+    print("Bot Casify Master (Com Ads & Pix) iniciado com sucesso!")
     bot.infinity_polling()
