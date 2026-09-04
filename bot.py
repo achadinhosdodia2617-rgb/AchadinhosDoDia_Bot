@@ -68,7 +68,8 @@ def processar_termo_inteligente(texto):
         "papel": "papel toalha rolo grande",
         "mesa": "mesa posta jogo americano",
         "mesas": "mesa de centro industrial",
-        "caneta": "caneta touch universal stylus"
+        "caneta": "caneta touch universal stylus",
+        "conjunto": "conjunto feminino duna short saia"
     }
     
     if texto_limpo in expansoes:
@@ -143,6 +144,8 @@ def gerar_gancho_promosam(nome_produto):
         return "O QUERIDINHO DO MOMENTO QUE ESGOTA RÁPIDO ✨"
     elif any(p in nome_upper for p in ["CADEIRA", "ESCRITORIO", "GAMER"]):
         return "CONFORTO E CUSTO-BENEFÍCIO EXCEPCIONAL"
+    elif any(p in nome_upper for p in ["CONJUNTO", "VESTIDO", "CROPPED", "SAIA"]):
+        return "LOOK PERFEITO PRA VOCÊ ARRASAR EM QUALQUER LUGAR 😍"
     elif any(p in nome_upper for p in ["TOALHA", "KIT", "JOGO", "PANELA", "COPO", "PRATO", "CANECA", "CANETA"]):
         return "ACHADINHO QUE VOCÊ PRECISA TER EM CASA 🤌"
     else:
@@ -215,17 +218,18 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
             preco_formatado = formatar_preco(preco_raw)
             gancho_topo = gerar_gancho_promosam(nome_prod_raw)
             
+            # Correção do bug do cifrão duplo e cálculo limpo de parcelamento
             trecho_parcelamento = ""
             try:
                 p_val = float(preco_raw)
-                if p_val > 80:
-                    parcelas = 12 if p_val > 250 else 6
+                if p_val > 40:
+                    parcelas = 12 if p_val > 200 else 6
                     v_parcela = p_val / parcelas
-                    trecho_parcelamento = f" em até {parcelas}x R$ {formatar_preco(v_parcela)}"
+                    trecho_parcelamento = f" ou em até {parcelas}x de {formatar_preco(v_parcela)}"
             except:
                 pass
             
-            bloco_preco = f"🔥 POR {preco_formatado} 🔥{trecho_parcelamento}\n\n"
+            bloco_preco = f"🔥 POR {preco_formatado} no Pix{trecho_parcelamento} 🔥\n\n"
             tem_desconto_real = False
             try:
                 if preco_max_raw and float(preco_max_raw) > float(preco_raw):
@@ -235,21 +239,95 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
                     de_formatado = formatar_preco(preco_max_raw)
                     bloco_preco = (
                         f"DE ~~{de_formatado}~~\n"
-                        f"🔥 POR {preco_formatado} 🔥 ({economia}% OFF){trecho_parcelamento}\n\n"
+                        f"🔥 POR {preco_formatado} no Pix ({economia}% OFF){trecho_parcelamento} 🔥\n\n"
                     )
                     tem_desconto_real = True
             except:
                 pass
             
-            # Adiciona aviso de cupom verdadeiro se houver desconto ou indicação de campanha
+            # Linha transparente de cupom baseada em regras reais
             trecho_cupom = ""
-            if tem_desconto_real or any(termo in nome_prod_raw.upper() for termo in ["CUPOM", "OFERTA", "PROMO", "DESCONTO"]):
+            if tem_desconto_real or any(termo in nome_prod_raw.upper() for termo in ["CUPOM", "FRETE GRÁTIS", "FRETE GRATIS", "OFERTA", "PROMO"]):
                 trecho_cupom = "🎟️ *Aplicar Cupom na Página!*\n\n"
             
             texto_postagem = (
                 f"{gancho_topo}\n\n"
                 f"✅ {nome_prod}\n\n"
                 f"{bloco_preco}"
+                f"{trecho_cupom}"
+                f"🔗 {link_afiliado}\n\n"
+                "anúncio"
+            )
+            
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("🔗 ABRIR LINK DA OFERTA", url=link_afiliado))
+            
+            if imagem_url:
+                try:
+                    bot.send_photo(chat_id, photo=imagem_url, caption=texto_postagem, reply_markup=markup, parse_mode="Markdown")
+                except:
+                    bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            else:
+                bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            
+            HISTORICO_ENVIADOS.add(link_afiliado)
+            if len(HISTORICO_ENVIADOS) > 50:
+                HISTORICO_ENVIADOS.pop()
+                
+            enviados_nesta_busca += 1
+            if enviados_nesta_busca >= 3:
+                break
+            time.sleep(0.5)
+            
+        if enviados_nesta_busca == 0:
+            bot.send_message(chat_id, f"⚠️ Todos os produtos retornados para '{termo_busca}' já estão no histórico recente. Tente buscar novamente!", parse_mode="Markdown")
+    else:
+        bot.send_message(chat_id, f"⚠️ Nenhum resultado encontrado para '{termo_busca}'. Tente buscar com outras palavras.", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda message: True)
+def processar_mensagem(message):
+    texto_usuario = message.text.strip()
+    
+    if "http://" in texto_usuario or "https://" in texto_usuario:
+        bot.reply_to(message, "🔄 Processando link...")
+        link_afiliado = expandir_link_shopee(texto_usuario)
+        texto_postagem = (
+            "ACHADINHO ESPECIAL DA SHOPEE 🔥\n\n"
+            "✅ Produto Selecionado\n\n"
+            "🔥 POR APENAS UM PREÇO INCRÍVEL 🔥\n\n"
+            f"🔗 {link_afiliado}\n\n"
+            "anúncio"
+        )
+        FILA_RASCUNHOS.append(texto_postagem)
+        bot.send_message(message.chat.id, "📦 Adicionado à fila!", parse_mode="Markdown")
+    else:
+        min_p, max_p = None, None
+        termo_busca = texto_usuario
+        
+        if "|" in texto_usuario:
+            partes = [p.strip() for p in texto_usuario.split("|")]
+            termo_busca = partes[0]
+            for parte in partes[1:]:
+                if parte.lower().startswith("min:"):
+                    try:
+                        min_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+                elif parte.lower().startswith("max:"):
+                    try:
+                        max_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+
+        bot.reply_to(message, f"🔍 Garimpando um lote amplo de ofertas...")
+        produtos = consultar_shopee_avancado(termo_busca, min_price=min_p, max_price=max_p, sort_type=1)
+        processar_e_enviar_produtos(message.chat.id, produtos, termo_busca)
+
+if __name__ == "__main__":
+    t = Thread(target=run_web)
+    t.start()
+    print("Bot Casify Master 3.0 (Pix & Preço Perfeito) iniciado com sucesso!")
+    bot.infinity_polling()
                 f"{trecho_cupom}"
                 f"🔗 {link_afiliado}\n\n"
                 "anúncio"
