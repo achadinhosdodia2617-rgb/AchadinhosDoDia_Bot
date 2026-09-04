@@ -2,14 +2,13 @@ import os
 import json
 import time
 import hashlib
-import hmac
 import requests
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from flask import Flask
 from threading import Thread
 
-# Configurações do Bot e da Shopee puxadas direto das Variáveis de Ambiente do Render
+# Configurações do Bot e da Shopee via Variáveis de Ambiente do Render
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 SHOPEE_APP_ID = os.environ.get("SHOPEE_APP_ID")
 SHOPEE_SECRET = os.environ.get("SHOPEE_SECRET")
@@ -21,16 +20,15 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot Casify (com API Shopee Oficial) rodando com sucesso!"
+    return "Bot Casify (Padrão PromoSam) rodando com sucesso!"
 
 def run_web():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
 
-# Função para consultar a API GraphQL de Afiliados da Shopee com assinatura HMAC-SHA256
+# Função avançada para buscar e extrair dados detalhados da API GraphQL da Shopee
 def consultar_shopee_api(keyword):
     url = "https://open-api.affiliate.shopee.com.br/graphql"
     
-    # Query GraphQL estruturada para buscar ofertas de produtos por palavra-chave
     query_str = f"""
     {{
       productOfferV2(keyword: "{keyword}", limit: 1) {{
@@ -55,7 +53,6 @@ def consultar_shopee_api(keyword):
     payload_json = json.dumps(payload_dict, separators=(',', ':'))
     timestamp = int(time.time())
     
-    # Assinatura de segurança exigida pela API da Shopee: AppID + timestamp + payload + secret
     factor = f"{SHOPEE_APP_ID}{timestamp}{payload_json}{SHOPEE_SECRET}"
     signature = hashlib.sha256(factor.encode('utf-8')).hexdigest()
     
@@ -76,7 +73,7 @@ def consultar_shopee_api(keyword):
         
     return None
 
-# Menus e Funções do Bot
+# Menus e Painel
 def criar_menu_principal():
     markup = InlineKeyboardMarkup(row_width=2)
     b1 = InlineKeyboardButton("🎁 Criar Oferta", callback_data="btn_promocao")
@@ -91,8 +88,8 @@ def criar_menu_principal():
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     texto = (
-        "🤖 **Casify - Painel Oficial**\n\n"
-        "Envie o nome de um produto para buscar na Shopee via API ou mande um link direto para gerar sua oferta!\n\n"
+        "🤖 **Casify - Painel Profissional**\n\n"
+        "Envie o nome exato do produto ou o link direto para gerar postagens no padrão dos maiores canais de garimpo!\n\n"
         "👇 **Escolha uma opção abaixo:**"
     )
     bot.send_message(message.chat.id, texto, reply_markup=criar_menu_principal(), parse_mode="Markdown")
@@ -101,19 +98,19 @@ def send_welcome(message):
 def callback_query(call):
     if call.data == "btn_promocao":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, "🎁 Envie o nome ou link do produto que deseja transformar em oferta:")
+        bot.send_message(call.message.chat.id, "🎁 Envie o nome ou link do produto:")
     elif call.data == "btn_buscar":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, "🔍 Digite o que deseja buscar (Ex: *Liquidificador*, *Mixer*):", parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, "🔍 Digite o nome exato do produto (Ex: *Tênis Kappa*, *Secador Philco*):", parse_mode="Markdown")
     elif call.data == "btn_enviar_link":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, "🔗 Cole o seu link da Shopee aqui.")
+        bot.send_message(call.message.chat.id, "🔗 Cole o link bruto da Shopee aqui.")
     elif call.data == "btn_plano":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, "📊 Plano Atual: Profissional (API Shopee Conectada) 🚀")
+        bot.send_message(call.message.chat.id, "📊 Plano Atual: Profissional (Padrão PromoSam) 🚀")
     elif call.data == "btn_api":
         bot.answer_callback_query(call.id)
-        bot.send_message(call.message.chat.id, "🔑 API da Shopee ativa e configurada com segurança no ambiente!", parse_mode="Markdown")
+        bot.send_message(call.message.chat.id, "🔑 API da Shopee ativa e integrada com sucesso!", parse_mode="Markdown")
     elif call.data == "btn_suporte":
         bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, "🛠️ Suporte técnico à disposição!")
@@ -124,13 +121,15 @@ def processar_mensagem(message):
     
     # Se o usuário enviou um link direto
     if "http://" in texto_usuario or "https://" in texto_usuario:
-        bot.reply_to(message, "🔄 Processando link...")
-        link_afiliado = f"{texto_usuario}?uls_trackid=casify_track"
+        bot.reply_to(message, "🔄 Processando link no padrão Casify...")
         
+        link_afiliado = texto_usuario.split("?")[0] + "?uls_trackid=casify_track"
+        
+        # Estrutura idêntica aos prints de referência
         texto_postagem = (
-            "PRECISAVA DESSA NO GARIMPO 🤌\n\n"
-            "✅ Produto Shopee\n\n"
-            "🔥 **Oferta imperdível no PIX** 🔥\n\n"
+            "ACHADO IMPERDÍVEL NO GARIMPO 🔥\n\n"
+            "✅ Produto Selecionado na Shopee\n\n"
+            "🔥 **OFERTA ESPECIAL LIBERADA** 🔥 no PIX\n\n"
             "✨ *Casify*"
         )
         
@@ -139,8 +138,8 @@ def processar_mensagem(message):
         bot.send_message(message.chat.id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
         
     else:
-        # Se o usuário digitou texto, busca na API de afiliados da Shopee
-        bot.reply_to(message, f"🔍 Buscando '{texto_usuario}' na API da Shopee...")
+        # Busca por palavra-chave refinada
+        bot.reply_to(message, f"🔍 Pesquisando '{texto_usuario}' com precisão na Shopee...")
         
         produto = consultar_shopee_api(texto_usuario)
         
@@ -149,8 +148,9 @@ def processar_mensagem(message):
             preco = produto.get("price", "Consulte")
             link_oferta = produto.get("offerLink") or produto.get("productLink", "https://shopee.com.br")
             
+            # Montagem dinâmica com a identidade visual exata solicitada
             texto_postagem = (
-                "PRECISAVA DESSA NO GARIMPO 🤌\n\n"
+                f"OLHA ESSE ACHADO: {texto_usuario.upper()} NO PRECIN TOP 🤌\n\n"
                 f"✅ {nome_prod}\n\n"
                 f"🔥 **POR R$ {preco}** 🔥 no PIX\n\n"
                 "✨ *Casify*"
@@ -160,11 +160,15 @@ def processar_mensagem(message):
             markup.add(InlineKeyboardButton("🔗 CLIQUE PARA ABRIR O LINK", url=link_oferta))
             bot.send_message(message.chat.id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
         else:
-            bot.send_message(message.chat.id, f"⚠️ Não encontramos resultados diretos para '{texto_usuario}' via API. Tente enviar um link direto da Shopee.")
+            bot.send_message(
+                message.chat.id, 
+                f"⚠️ Não localizamos um match exato para '{texto_usuario}'. "
+                "💡 **Dica:** Tente digitar o nome completo do produto ou enviar o link direto para garantir 100% de precisão!"
+            , parse_mode="Markdown")
 
 if __name__ == "__main__":
     t = Thread(target=run_web)
     t.start()
     
-    print("Bot Casify com API Shopee iniciado...")
+    print("Bot Casify otimizado iniciado...")
     bot.infinity_polling()
