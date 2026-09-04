@@ -15,7 +15,7 @@ SHOPEE_SECRET = os.environ.get("SHOPEE_SECRET")
 bot = telebot.TeleBot(TOKEN)
 FILA_RASCUNHOS = []
 
-# Histórico anti-repetição (armazena os links dos últimos produtos enviados)
+# Histórico anti-repetição otimizado
 HISTORICO_ENVIADOS = set()
 
 app = Flask('')
@@ -54,11 +54,6 @@ def expandir_link_shopee(url_curta):
         return url_curta
 
 def processar_termo_inteligente(texto):
-    """
-    Modo inteligente: limpa frases longas, remove stopwords e expande 
-    termos curtos ou isolados (como copos, pratos, xícara, caneca, pano, papel, mesa) 
-    para garantir que a API da Shopee encontre resultados certeiros.
-    """
     texto_limpo = texto.lower().strip()
     
     expansoes = {
@@ -72,7 +67,8 @@ def processar_termo_inteligente(texto):
         "pano": "pano de prato kit estampado",
         "papel": "papel toalha rolo grande",
         "mesa": "mesa posta jogo americano",
-        "mesas": "mesa de centro industrial"
+        "mesas": "mesa de centro industrial",
+        "caneta": "caneta touch universal stylus"
     }
     
     if texto_limpo in expansoes:
@@ -88,14 +84,11 @@ def processar_termo_inteligente(texto):
     return texto_limpo
 
 def consultar_shopee_avancado(keyword, min_price=None, max_price=None, sort_type=1, tentativas=3):
-    """
-    Consulta a API da Shopee com suporte a filtros de preço, ordenação avançada e processamento NLP.
-    """
     url = "https://open-api.affiliate.shopee.com.br/graphql"
     
     termo_otimizado = processar_termo_inteligente(keyword)
     
-    args = [f'keyword: "{termo_otimizado}"', f'limit: 5', f'sortType: {sort_type}']
+    args = [f'keyword: "{termo_otimizado}"', f'limit: 50', f'sortType: {sort_type}']
     if min_price is not None:
         args.append(f'minPrice: {min_price}')
     if max_price is not None:
@@ -150,8 +143,8 @@ def gerar_gancho_promosam(nome_produto):
         return "O QUERIDINHO DO MOMENTO QUE ESGOTA RÁPIDO ✨"
     elif any(p in nome_upper for p in ["CADEIRA", "ESCRITORIO", "GAMER"]):
         return "CONFORTO E CUSTO-BENEFÍCIO EXCEPCIONAL"
-    elif any(p in nome_upper for p in ["TOALHA", "KIT", "JOGO", "PANELA", "COPO", "PRATO", "CANECA"]):
-        return "SUAS COISAS MAIS FINAS QUE FOLHA DE PAPEL 🤌"
+    elif any(p in nome_upper for p in ["TOALHA", "KIT", "JOGO", "PANELA", "COPO", "PRATO", "CANECA", "CANETA"]):
+        return "ACHADINHO QUE VOCÊ PRECISA TER EM CASA 🤌"
     else:
         return "ACHADINHO IMPERDÍVEL LIBERADO AGORA 🚀"
 
@@ -210,7 +203,6 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
         for produto in produtos:
             link_afiliado = produto.get("offerLink") or produto.get("productLink", "https://shopee.com.br")
             
-            # Filtro Anti-Repetição
             if link_afiliado in HISTORICO_ENVIADOS:
                 continue
                 
@@ -234,6 +226,7 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
                 pass
             
             bloco_preco = f"🔥 POR {preco_formatado} 🔥{trecho_parcelamento}\n\n"
+            tem_desconto_real = False
             try:
                 if preco_max_raw and float(preco_max_raw) > float(preco_raw):
                     p_max = float(preco_max_raw)
@@ -244,13 +237,94 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
                         f"DE ~~{de_formatado}~~\n"
                         f"🔥 POR {preco_formatado} 🔥 ({economia}% OFF){trecho_parcelamento}\n\n"
                     )
+                    tem_desconto_real = True
             except:
                 pass
             
-            # Lógica inteligente de cupom com base no título do produto
+            # Adiciona aviso de cupom verdadeiro se houver desconto ou indicação de campanha
             trecho_cupom = ""
-            nome_upper = nome_prod_raw.upper()
-            if "FRETE GRÁTIS" in nome_upper or "FRETE GRATIS" in nome_upper:
+            if tem_desconto_real or any(termo in nome_prod_raw.upper() for termo in ["CUPOM", "OFERTA", "PROMO", "DESCONTO"]):
+                trecho_cupom = "🎟️ *Aplicar Cupom na Página!*\n\n"
+            
+            texto_postagem = (
+                f"{gancho_topo}\n\n"
+                f"✅ {nome_prod}\n\n"
+                f"{bloco_preco}"
+                f"{trecho_cupom}"
+                f"🔗 {link_afiliado}\n\n"
+                "anúncio"
+            )
+            
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("🔗 ABRIR LINK DA OFERTA", url=link_afiliado))
+            
+            if imagem_url:
+                try:
+                    bot.send_photo(chat_id, photo=imagem_url, caption=texto_postagem, reply_markup=markup, parse_mode="Markdown")
+                except:
+                    bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            else:
+                bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            
+            HISTORICO_ENVIADOS.add(link_afiliado)
+            if len(HISTORICO_ENVIADOS) > 50:
+                HISTORICO_ENVIADOS.pop()
+                
+            enviados_nesta_busca += 1
+            if enviados_nesta_busca >= 3:
+                break
+            time.sleep(0.5)
+            
+        if enviados_nesta_busca == 0:
+            bot.send_message(chat_id, f"⚠️ Todos os produtos retornados para '{termo_busca}' já estão no histórico recente. Tente buscar novamente!", parse_mode="Markdown")
+    else:
+        bot.send_message(chat_id, f"⚠️ Nenhum resultado encontrado para '{termo_busca}'. Tente buscar com outras palavras.", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda message: True)
+def processar_mensagem(message):
+    texto_usuario = message.text.strip()
+    
+    if "http://" in texto_usuario or "https://" in texto_usuario:
+        bot.reply_to(message, "🔄 Processando link...")
+        link_afiliado = expandir_link_shopee(texto_usuario)
+        texto_postagem = (
+            "ACHADINHO ESPECIAL DA SHOPEE 🔥\n\n"
+            "✅ Produto Selecionado\n\n"
+            "🔥 POR APENAS UM PREÇO INCRÍVEL 🔥\n\n"
+            f"🔗 {link_afiliado}\n\n"
+            "anúncio"
+        )
+        FILA_RASCUNHOS.append(texto_postagem)
+        bot.send_message(message.chat.id, "📦 Adicionado à fila!", parse_mode="Markdown")
+    else:
+        min_p, max_p = None, None
+        termo_busca = texto_usuario
+        
+        if "|" in texto_usuario:
+            partes = [p.strip() for p in texto_usuario.split("|")]
+            termo_busca = partes[0]
+            for parte in partes[1:]:
+                if parte.lower().startswith("min:"):
+                    try:
+                        min_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+                elif parte.lower().startswith("max:"):
+                    try:
+                        max_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+
+        bot.reply_to(message, f"🔍 Garimpando um lote amplo de ofertas...")
+        produtos = consultar_shopee_avancado(termo_busca, min_price=min_p, max_price=max_p, sort_type=1)
+        processar_e_enviar_produtos(message.chat.id, produtos, termo_busca)
+
+if __name__ == "__main__":
+    t = Thread(target=run_web)
+    t.start()
+    print("Bot Casify Master 3.0 (Com Aviso de Cupom Real) iniciado com sucesso!")
+    bot.infinity_polling()
+IS" in nome_upper or "FRETE GRATIS" in nome_upper:
                 trecho_cupom = "🚚 *Produto com benefício de Frete Grátis!*\n\n"
             elif "CUPOM" in nome_upper:
                 trecho_cupom = "🎟️ *Verifique cupons disponíveis na página do produto*\n\n"
