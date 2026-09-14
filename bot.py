@@ -22,7 +22,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot Casify Pixel-Perfect PromoSam rodando!"
+    return "Bot SetupDrop (Geek & Gamer) rodando perfeitamente!"
 
 def run_web():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
@@ -48,46 +48,57 @@ def expandir_link_shopee(url_curta):
         response = requests.head(url_curta, allow_redirects=True, headers=headers, timeout=5)
         url_final = response.url
         url_limpa = url_final.split("?")[0]
-        return f"{url_limpa}?uls_trackid=casify_perfect"
+        return f"{url_limpa}?uls_trackid=setupdrop_geek"
     except Exception as e:
         print(f"Erro ao expandir link: {e}")
         return url_curta
 
-def processar_termo_inteligente(texto):
+def processar_termo_setup_inteligente(texto):
     texto_limpo = texto.lower().strip()
     
-    expansoes = {
-        "copo": "copo termico inox Stanley",
-        "copos": "copo termico inox Stanley",
-        "prato": "jogo de pratos rasos fundo",
-        "pratos": "jogo de pratos rasos fundo",
-        "xícara": "xicara de cha com pires",
-        "xicara": "xicara de cha com pires",
-        "caneca": "caneca personalizada criativa",
-        "pano": "pano de prato kit estampado",
-        "papel": "papel toalha rolo grande",
-        "mesa": "mesa posta jogo americano",
-        "mesas": "mesa de centro industrial",
-        "caneta": "caneta touch universal stylus",
-        "conjunto": "conjunto feminino duna short saia"
+    # Mapeamento e expansão focada estritamente no nicho Gamer/Setup de alta qualidade
+    expansoes_setup = {
+        "mouse": "mouse gamer rgb mecanico alta performance",
+        "teclado": "teclado gamer mecanico switch rgb",
+        "headset": "headset gamer 7.1 surround microfone noise cancelling",
+        "fone": "headset gamer rgb alta qualidade",
+        "cadeira": "cadeira gamer ergonomica reclinavel apoio lombar",
+        "monitor": "monitor gamer ips 144hz 1ms",
+        "mousepad": "mousepad gamer grande xxl speed rabo de rato bordado",
+        "suporte": "suporte articulado monitor bracopistao gas",
+        "microfone": "microfone condensador usb studio gamer podcast",
+        "luz": "barra de luz led monitor rgb lampada mesa gamer",
+        "controle": "controle sem fio bluetooth pc android ps3",
+        "gabinete": "gabinete gamer vidro temperado fans rgb inclusas"
     }
     
-    if texto_limpo in expansoes:
-        return expansoes[texto_limpo]
+    if texto_limpo in expansoes_setup:
+        return expansoes_setup[texto_limpo]
+    
+    # Se o usuário digitou algo personalizado, garantimos o contexto gamer/setup para filtrar por qualidade
+    if not any(termo in texto_limpo for termo in ["gamer", "setup", "rgb", "mecanico", "pro", "alta"]):
+        return f"{texto_limpo} gamer setup alta qualidade"
         
-    stopwords = {"de", "a", "o", "que", "e", "do", "da", "em", "um", "para", "é", "com", "não", "uma", "os", "no", "se", "na", "por", "mais", "as", "dos", "como", "mas", "foi", "ao", "ele", "das", "às", "seu", "sua", "ou", "quando", "muito", "nos", "já", "eu", "também", "só", "pelo", "pela", "até", "isso", "ela", "entre", "depois", "sem", "mesmo", "aos", "quem", "nas", "esse", "num", "usado", "quero", "achar", "encontrar"}
-    
-    palavras = texto_limpo.split()
-    palavras_filtradas = [p for p in palavras if p not in stopwords]
-    
-    if palavras_filtradas:
-        return " ".join(palavras_filtradas)
     return texto_limpo
 
-def consultar_shopee_avancado(keyword, min_price=None, max_price=None, sort_type=1, tentativas=3):
+def validar_qualidade_produto(nome_produto):
+    nome_upper = nome_produto.upper()
+    
+    # Palavras-chave que indicam itens de péssima qualidade ou falsificações grosseiras para banir
+    termos_proibidos = ["GENÉRICO", "REPLICA", "SIMILAR", "PARAGUAIA", "DESCARTAVEL", "BRINQUEDO"]
+    for termo in termos_proibidos:
+        if termo in nome_upper:
+            return False
+            
+    return True
+
+def consultar_shopee_avancado(keyword, min_price=30.0, max_price=None, sort_type=1, tentativas=3):
+    """
+    Garante min_price=30.0 por padrão para evitar lixo ultra-barato que estraga a reputação do setup.
+    """
     url = "https://open-api.affiliate.shopee.com.br/graphql"
     
-    termo_otimizado = processar_termo_inteligente(keyword)
+    termo_otimizado = processar_termo_setup_inteligente(keyword)
     
     args = [f'keyword: "{termo_otimizado}"', f'limit: 50', f'sortType: {sort_type}']
     if min_price is not None:
@@ -128,44 +139,46 @@ def consultar_shopee_avancado(keyword, min_price=None, max_price=None, sort_type
                 data = response.json()
                 nodes = data.get("data", {}).get("productOfferV2", {}).get("nodes", [])
                 if nodes:
-                    return nodes
+                    # Filtra produtos na lista garantindo rigor de qualidade
+                    nodes_filtrados = [n for n in nodes if validar_qualidade_produto(n.get("productName", ""))]
+                    if nodes_filtrados:
+                        return nodes_filtrados
         except Exception as e:
             print(f"Tentativa {tentativa_atual + 1} falhou: {e}")
             time.sleep(1)
     return []
 
-def gerar_gancho_promosam(nome_produto):
+def gerar_gancho_setupdrop(nome_produto):
     nome_upper = nome_produto.upper()
-    if any(p in nome_upper for p in ["TÊNIS", "TENIS", "SAPATO", "SANDÁLIA", "CHINELO", "CHUTEIRA"]):
-        return "OS DA MINHA COLEÇÃO ESTÃO COM INVEJA DESSA"
-    elif any(p in nome_upper for p in ["FONE", "BLUETOOTH", "HEADSET", "SMARTWATCH", "CELULAR"]):
-        return "TECNOLOGIA DE PONTA COM PREÇO ABSURDO 🔥"
-    elif any(p in nome_upper for p in ["SECADOR", "ESCOVA", "CHAPINHA", "PERFUME"]):
-        return "O QUERIDINHO DO MOMENTO QUE ESGOTA RÁPIDO ✨"
-    elif any(p in nome_upper for p in ["CADEIRA", "ESCRITORIO", "GAMER"]):
-        return "CONFORTO E CUSTO-BENEFÍCIO EXCEPCIONAL"
-    elif any(p in nome_upper for p in ["CONJUNTO", "VESTIDO", "CROPPED", "SAIA"]):
-        return "LOOK PERFEITO PRA VOCÊ ARRASAR EM QUALQUER LUGAR 😍"
-    elif any(p in nome_upper for p in ["TOALHA", "KIT", "JOGO", "PANELA", "COPO", "PRATO", "CANECA", "CANETA"]):
-        return "ACHADINHO QUE VOCÊ PRECISA TER EM CASA 🤌"
+    if any(p in nome_upper for p in ["TECLADO", "SWITCH"]):
+        return "LEVEL UP NO SEU SETUP! TECLADO MECÂNICO MONSTRO ⌨️🔥"
+    elif any(p in nome_upper for p in ["MOUSE", "MOUSEPAD"]):
+        return "PRECISÃO ABSOLUTA PRA SUAS RANKEDs 🖱️⚡"
+    elif any(p in nome_upper for p in ["HEADSET", "FONE", "MICROFONE"]):
+        return "IMERSÃO TOTAL E ÁUDIO CRISTALINO NO JOGO 🎧🎮"
+    elif any(p in nome_upper for p in ["CADEIRA", "SUPORTE"]):
+        return "CONFORTO EXTREMO PARA MARATONAS DE JOGOS 💺👑"
+    elif any(p in nome_upper for p in ["MONITOR", "LUZ", "LED", "RGB"]):
+        return "DEIXE SEU SETUP COM VISUAL DE CYBERPUNK 💡✨"
     else:
-        return "ACHADINHO IMPERDÍVEL LIBERADO AGORA 🚀"
+        return "ACHADINHO GEEK DE ALTA QUALIDADE PARA O SEU SETUP 🚀"
 
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     markup = InlineKeyboardMarkup()
     markup.add(
-        InlineKeyboardButton("📱 Eletrônicos", callback_data="cat_eletronicos"),
-        InlineKeyboardButton("👗 Moda & Look", callback_data="cat_moda")
+        InlineKeyboardButton("⌨️ Teclados & Mouses", callback_data="cat_perifericos"),
+        InlineKeyboardButton("🎧 Headsets & Áudio", callback_data="cat_audio")
     )
     markup.add(
-        InlineKeyboardButton("🏠 Casa & Cozinha", callback_data="cat_casa"),
-        InlineKeyboardButton("✨ Mais Vendidos", callback_data="cat_populares")
+        InlineKeyboardButton("💺 Cadeiras & Conforto", callback_data="cat_cadeiras"),
+        InlineKeyboardButton("💡 Iluminação & RGB", callback_data="cat_iluminacao")
     )
     
     welcome_text = (
-        "🤖 *Casify Pixel-Perfect* ativo!\n\n"
-        "Envie o nome de qualquer produto, frases naturais, links da Shopee ou escolha uma das categorias abaixo:"
+        "⚡ *SetupDrop - Gear & Setup Geek* ativo!\n\n"
+        "O seu canal definitivo de achados high-end para gamers e entusiastas.\n"
+        "Envie o nome de qualquer componente, links ou escolha uma categoria abaixo para garimpar itens de alta qualidade:"
     )
     bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
@@ -173,22 +186,22 @@ def send_welcome(message):
 def callback_categorias(call):
     categoria = call.data.split("_")[1]
     termos_map = {
-        "eletronicos": "fone bluetooth smartwatch",
-        "moda": "vestido feminino cropped",
-        "casa": "jogo de panelas organizer",
-        "populares": "achadinhos virais shopee"
+        "perifericos": "teclado mecanico mouse gamer rgb",
+        "audio": "headset gamer microfone studio",
+        "cadeiras": "cadeira gamer ergonomica reclinavel",
+        "iluminacao": "barra de luz rgb monitor led setup"
     }
-    keyword = termos_map.get(categoria, "achados shopee")
-    bot.answer_callback_query(call.id, f"Buscando ofertas de {categoria}...")
-    bot.send_message(call.message.chat.id, f"🔍 Garimpando os melhores itens de *{categoria.upper()}*...", parse_mode="Markdown")
+    keyword = termos_map.get(categoria, "setup gamer alta performance")
+    bot.answer_callback_query(call.id, f"Buscando o melhor do nicho {categoria}...")
+    bot.send_message(call.message.chat.id, f"⚡ Garimpando os melhores itens de *{categoria.upper()}*...", parse_mode="Markdown")
     
-    produtos = consultar_shopee_avancado(keyword, sort_type=1)
+    produtos = consultar_shopee_avancado(keyword, min_price=35.0, sort_type=1)
     processar_e_enviar_produtos(call.message.chat.id, produtos, keyword)
 
 @bot.message_handler(commands=['fila'])
 def ver_fila(message):
     if not FILA_RASCUNHOS:
-        bot.reply_to(message, "📭 Fila vazia.")
+        bot.reply_to(message, "📭 Fila de posts vazia.")
     else:
         bot.reply_to(message, f"📋 Você tem **{len(FILA_RASCUNHOS)}** itens na fila.", parse_mode="Markdown")
 
@@ -196,7 +209,7 @@ def ver_fila(message):
 def limpar_fila(message):
     global FILA_RASCUNHOS
     FILA_RASCUNHOS = []
-    bot.reply_to(message, "🗑️ Fila limpa!")
+    bot.reply_to(message, "🗑️ Fila limpa com sucesso!")
 
 def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
     global HISTORICO_ENVIADOS
@@ -216,14 +229,14 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
             
             nome_prod = escapar_markdown(nome_prod_raw)
             preco_formatado = formatar_preco(preco_raw)
-            gancho_topo = gerar_gancho_promosam(nome_prod_raw)
+            gancho_topo = gerar_gancho_setupdrop(nome_prod_raw)
             
-            # Geração limpa do parcelamento sem bugs de duplicação
+            # Geração limpa de parcelamento
             trecho_parcelamento = ""
             try:
                 p_val = float(preco_raw)
-                if p_val > 40:
-                    parcelas = 12 if p_val > 200 else 6
+                if p_val > 50:
+                    parcelas = 12 if p_val > 250 else 6
                     v_parcela = p_val / parcelas
                     trecho_parcelamento = f" ou em até {parcelas}x de {formatar_preco(v_parcela)}"
             except:
@@ -245,9 +258,89 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
             except:
                 pass
             
-            # Linha transparente de cupom baseada estritamente em regras reais (sem strings falsas)
             trecho_cupom = ""
-            if tem_desconto_real or any(termo in nome_prod_raw.upper() for termo in ["CUPOM", "FRETE GRÁTIS", "FRETE GRATIS", "OFERTA", "PROMO"]):
+            if tem_desconto_real or any(termo in nome_prod_raw.upper() for termo in ["CUPOM", "FRETE GRÁTIS", "PROMO"]):
+                trecho_cupom = "🎟️ *Aplicar Cupom na Página!*\n\n"
+            
+            texto_postagem = (
+                f"{gancho_topo}\n\n"
+                f"✅ {nome_prod}\n\n"
+                f"{bloco_preco}"
+                f"{trecho_cupom}"
+                f"🔗 {link_afiliado}\n\n"
+                "SetupDrop • #SetupGamer #Geek"
+            )
+            
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("🔗 VER NA LOJA / COMPRAR", url=link_afiliado))
+            
+            if imagem_url:
+                try:
+                    bot.send_photo(chat_id, photo=imagem_url, caption=texto_postagem, reply_markup=markup, parse_mode="Markdown")
+                except:
+                    bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            else:
+                bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            
+            HISTORICO_ENVIADOS.add(link_afiliado)
+            if len(HISTORICO_ENVIADOS) > 50:
+                HISTORICO_ENVIADOS.pop()
+                
+            enviados_nesta_busca += 1
+            if enviados_nesta_busca >= 3:
+                break
+            time.sleep(0.5)
+            
+        if enviados_nesta_busca == 0:
+            bot.send_message(chat_id, f"⚠️ Produtos para '{termo_busca}' já foram enviados recentemente. Tente outro item gamer!", parse_mode="Markdown")
+    else:
+        bot.send_message(chat_id, f"⚠️ Nenhum item de alta qualidade encontrado para '{termo_busca}'. Tente buscar outro equipamento do setup.", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda message: True)
+def processar_mensagem(message):
+    texto_usuario = message.text.strip()
+    
+    if "http://" in texto_usuario or "https://" in texto_usuario:
+        bot.reply_to(message, "🔄 Processando link de produto gamer...")
+        link_afiliado = expandir_link_shopee(texto_usuario)
+        texto_postagem = (
+            "SETUPDROP • ACHADINHO DESTAQUE ⚡\n\n"
+            "✅ Equipamento Selecionado\n\n"
+            "🔥 GARANTA O SEU COM ESSE PREÇO 🔥\n\n"
+            f"🔗 {link_afiliado}\n\n"
+            "SetupDrop"
+        )
+        FILA_RASCUNHOS.append(texto_postagem)
+        bot.send_message(message.chat.id, "📦 Adicionado à fila do SetupDrop!", parse_mode="Markdown")
+    else:
+        min_p, max_p = 30.0, None  # Preço mínimo de segurança
+        termo_busca = texto_usuario
+        
+        if "|" in texto_usuario:
+            partes = [p.strip() for p in texto_usuario.split("|")]
+            termo_busca = partes[0]
+            for parte in partes[1:]:
+                if parte.lower().startswith("min:"):
+                    try:
+                        min_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+                elif parte.lower().startswith("max:"):
+                    try:
+                        max_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+
+        bot.reply_to(message, f"⚡ Garimpando hardware e acessórios de alta qualidade...")
+        produtos = consultar_shopee_avancado(termo_busca, min_price=min_p, max_price=max_p, sort_type=1)
+        processar_e_enviar_produtos(message.chat.id, produtos, termo_busca)
+
+if __name__ == "__main__":
+    t = Thread(target=run_web)
+    t.start()
+    print("Bot SetupDrop (Geek & Gamer) iniciado com sucesso!")
+    bot.infinity_polling()
+in nome_prod_raw.upper() for termo in ["CUPOM", "FRETE GRÁTIS", "FRETE GRATIS", "OFERTA", "PROMO"]):
                 trecho_cupom = "🎟️ *Aplicar Cupom na Página!*\n\n"
             
             texto_postagem = (
