@@ -314,6 +314,68 @@ if __name__ == "__main__":
     t.start()
     print("Bot SetupDrop iniciado com sucesso!")
     bot.infinity_polling()
+p=markup, parse_mode="Markdown")
+            else:
+                bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            
+            HISTORICO_ENVIADOS.add(link_afiliado)
+            if len(HISTORICO_ENVIADOS) > 100:
+                HISTORICO_ENVIADOS.pop()
+                
+            enviados_nesta_busca += 1
+            if enviados_nesta_busca >= 5:
+                break
+            time.sleep(0.4)
+            
+        if enviados_nesta_busca == 0:
+            bot.send_message(chat_id, f"⚠️ Produtos para '{termo_busca}' já enviados recentemente. Tente outro termo!", parse_mode="Markdown")
+    else:
+        bot.send_message(chat_id, f"⚠️ Nenhum resultado encontrado para '{termo_busca}'.", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda message: True)
+def processar_mensagem(message):
+    texto_usuario = message.text.strip()
+    
+    if "http://" in texto_usuario or "https://" in texto_usuario:
+        bot.reply_to(message, "🔄 Processando link...")
+        link_afiliado = expandir_link_shopee(texto_usuario)
+        texto_postagem = (
+            "SETUPDROP • ACHADINHO DESTAQUE ⚡\n\n"
+            "✅ Equipamento Selecionado\n\n"
+            "🔥 GARANTA O SEU COM ESSE PREÇO 🔥\n\n"
+            f"🔗 {link_afiliado}\n\n"
+            "SetupDrop"
+        )
+        FILA_RASCUNHOS.append(texto_postagem)
+        bot.send_message(message.chat.id, "📦 Adicionado à fila do SetupDrop!", parse_mode="Markdown")
+    else:
+        min_p, max_p = None, None
+        termo_busca = texto_usuario
+        
+        if "|" in texto_usuario:
+            partes = [p.strip() for p in texto_usuario.split("|")]
+            termo_busca = partes[0]
+            for parte in partes[1:]:
+                if parte.lower().startswith("min:"):
+                    try:
+                        min_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+                elif parte.lower().startswith("max:"):
+                    try:
+                        max_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+
+        bot.reply_to(message, f"⚡ Buscando ofertas para: *{termo_busca}*...", parse_mode="Markdown")
+        produtos = consultar_shopee_avancado(termo_busca, min_price=min_p, max_price=max_p, sort_type=1)
+        processar_e_enviar_produtos(message.chat.id, produtos, termo_busca)
+
+if __name__ == "__main__":
+    t = Thread(target=run_web)
+    t.start()
+    print("Bot SetupDrop iniciado com sucesso!")
+    bot.infinity_polling()
 rkup, parse_mode="Markdown")
                 except:
                     bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
