@@ -22,7 +22,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot SetupDrop (Geek & Gamer) rodando perfeitamente!"
+    return "Bot SetupDrop (Busca Ampla & Qualidade) rodando perfeitamente!"
 
 def run_web():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
@@ -53,52 +53,41 @@ def expandir_link_shopee(url_curta):
         print(f"Erro ao expandir link: {e}")
         return url_curta
 
-def processar_termo_setup_inteligente(texto):
+def processar_termo_setup_flexivel(texto):
     texto_limpo = texto.lower().strip()
     
-    # Mapeamento e expansão focada estritamente no nicho Gamer/Setup de alta qualidade
-    expansoes_setup = {
-        "mouse": "mouse gamer rgb mecanico alta performance",
-        "teclado": "teclado gamer mecanico switch rgb",
-        "headset": "headset gamer 7.1 surround microfone noise cancelling",
-        "fone": "headset gamer rgb alta qualidade",
-        "cadeira": "cadeira gamer ergonomica reclinavel apoio lombar",
-        "monitor": "monitor gamer ips 144hz 1ms",
-        "mousepad": "mousepad gamer grande xxl speed rabo de rato bordado",
-        "suporte": "suporte articulado monitor bracopistao gas",
-        "microfone": "microfone condensador usb studio gamer podcast",
-        "luz": "barra de luz led monitor rgb lampada mesa gamer",
-        "controle": "controle sem fio bluetooth pc android ps3",
-        "gabinete": "gabinete gamer vidro temperado fans rgb inclusas"
+    # Se o usuário digitar algo muito curto ou direto, damos um empurrãozinho saudável sem limitar demais
+    mapa_atalhos = {
+        "mouse": "mouse gamer rgb",
+        "teclado": "teclado mecanico gamer",
+        "headset": "headset gamer",
+        "fone": "fone gamer bluetooth",
+        "cadeira": "cadeira gamer",
+        "monitor": "monitor gamer",
+        "mousepad": "mousepad grande gamer",
+        "microfone": "microfone gamer rgb",
+        "suporte": "suporte monitor",
+        "controle": "controle gamer pc"
     }
     
-    if texto_limpo in expansoes_setup:
-        return expansoes_setup[texto_limpo]
-    
-    # Se o usuário digitou algo personalizado, garantimos o contexto gamer/setup para filtrar por qualidade
-    if not any(termo in texto_limpo for termo in ["gamer", "setup", "rgb", "mecanico", "pro", "alta"]):
-        return f"{texto_limpo} gamer setup alta qualidade"
+    if texto_limpo in mapa_atalhos:
+        return mapa_atalhos[texto_limpo]
         
     return texto_limpo
 
 def validar_qualidade_produto(nome_produto):
     nome_upper = nome_produto.upper()
-    
-    # Palavras-chave que indicam itens de péssima qualidade ou falsificações grosseiras para banir
-    termos_proibidos = ["GENÉRICO", "REPLICA", "SIMILAR", "PARAGUAIA", "DESCARTAVEL", "BRINQUEDO"]
+    # Apenas barreiras essenciais para evitar itens quebrados/falsificações óbvias
+    termos_proibidos = ["GENÉRICO DESCARTAVEL", "REPLICA GROSSA"]
     for termo in termos_proibidos:
         if termo in nome_upper:
             return False
-            
     return True
 
-def consultar_shopee_avancado(keyword, min_price=30.0, max_price=None, sort_type=1, tentativas=3):
-    """
-    Garante min_price=30.0 por padrão para evitar lixo ultra-barato que estraga a reputação do setup.
-    """
+def consultar_shopee_avancado(keyword, min_price=None, max_price=None, sort_type=1, tentativas=3):
     url = "https://open-api.affiliate.shopee.com.br/graphql"
     
-    termo_otimizado = processar_termo_setup_inteligente(keyword)
+    termo_otimizado = processar_termo_setup_flexivel(keyword)
     
     args = [f'keyword: "{termo_otimizado}"', f'limit: 50', f'sortType: {sort_type}']
     if min_price is not None:
@@ -139,7 +128,6 @@ def consultar_shopee_avancado(keyword, min_price=30.0, max_price=None, sort_type
                 data = response.json()
                 nodes = data.get("data", {}).get("productOfferV2", {}).get("nodes", [])
                 if nodes:
-                    # Filtra produtos na lista garantindo rigor de qualidade
                     nodes_filtrados = [n for n in nodes if validar_qualidade_produto(n.get("productName", ""))]
                     if nodes_filtrados:
                         return nodes_filtrados
@@ -167,18 +155,17 @@ def gerar_gancho_setupdrop(nome_produto):
 def send_welcome(message):
     markup = InlineKeyboardMarkup()
     markup.add(
-        InlineKeyboardButton("⌨️ Teclados & Mouses", callback_data="cat_perifericos"),
-        InlineKeyboardButton("🎧 Headsets & Áudio", callback_data="cat_audio")
+        InlineKeyboardButton("⌨️ Periféricos", callback_data="cat_perifericos"),
+        InlineKeyboardButton("🎧 Áudio & Headsets", callback_data="cat_audio")
     )
     markup.add(
-        InlineKeyboardButton("💺 Cadeiras & Conforto", callback_data="cat_cadeiras"),
+        InlineKeyboardButton("💺 Cadeiras & Mesas", callback_data="cat_cadeiras"),
         InlineKeyboardButton("💡 Iluminação & RGB", callback_data="cat_iluminacao")
     )
     
     welcome_text = (
         "⚡ *SetupDrop - Gear & Setup Geek* ativo!\n\n"
-        "O seu canal definitivo de achados high-end para gamers e entusiastas.\n"
-        "Envie o nome de qualquer componente, links ou escolha uma categoria abaixo para garimpar itens de alta qualidade:"
+        "Busca ampliada e flexível ativada! Envie o nome de qualquer equipamento, marca ou escolha uma categoria abaixo:"
     )
     bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
@@ -186,16 +173,16 @@ def send_welcome(message):
 def callback_categorias(call):
     categoria = call.data.split("_")[1]
     termos_map = {
-        "perifericos": "teclado mecanico mouse gamer rgb",
-        "audio": "headset gamer microfone studio",
-        "cadeiras": "cadeira gamer ergonomica reclinavel",
-        "iluminacao": "barra de luz rgb monitor led setup"
+        "perifericos": "teclado mecanico mouse gamer",
+        "audio": "headset gamer microfone",
+        "cadeiras": "cadeira gamer escritorio",
+        "iluminacao": "barra de luz rgb monitor"
     }
-    keyword = termos_map.get(categoria, "setup gamer alta performance")
-    bot.answer_callback_query(call.id, f"Buscando o melhor do nicho {categoria}...")
+    keyword = termos_map.get(categoria, "setup gamer")
+    bot.answer_callback_query(call.id, f"Buscando ofertas de {categoria}...")
     bot.send_message(call.message.chat.id, f"⚡ Garimpando os melhores itens de *{categoria.upper()}*...", parse_mode="Markdown")
     
-    produtos = consultar_shopee_avancado(keyword, min_price=35.0, sort_type=1)
+    produtos = consultar_shopee_avancado(keyword, sort_type=1)
     processar_e_enviar_produtos(call.message.chat.id, produtos, keyword)
 
 @bot.message_handler(commands=['fila'])
@@ -231,12 +218,11 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
             preco_formatado = formatar_preco(preco_raw)
             gancho_topo = gerar_gancho_setupdrop(nome_prod_raw)
             
-            # Geração limpa de parcelamento
             trecho_parcelamento = ""
             try:
                 p_val = float(preco_raw)
-                if p_val > 50:
-                    parcelas = 12 if p_val > 250 else 6
+                if p_val > 40:
+                    parcelas = 12 if p_val > 200 else 6
                     v_parcela = p_val / parcelas
                     trecho_parcelamento = f" ou em até {parcelas}x de {formatar_preco(v_parcela)}"
             except:
@@ -248,6 +234,99 @@ def processar_e_enviar_produtos(chat_id, produtos, termo_busca):
                 if preco_max_raw and float(preco_max_raw) > float(preco_raw):
                     p_max = float(preco_max_raw)
                     p_min = float(preco_raw)
+                    economia = int(((p_max - p_min) / p_max) * 100)
+                    de_formatado = formatar_preco(preco_max_raw)
+                    bloco_preco = (
+                        f"DE ~~{de_formatado}~~\n"
+                        f"🔥 POR {preco_formatado} no Pix ({economia}% OFF){trecho_parcelamento} 🔥\n\n"
+                    )
+                    tem_desconto_real = True
+            except:
+                pass
+            
+            trecho_cupom = ""
+            if tem_desconto_real or any(termo in nome_prod_raw.upper() for termo in ["CUPOM", "FRETE GRÁTIS", "PROMO"]):
+                trecho_cupom = "🎟️ *Aplicar Cupom na Página!*\n\n"
+            
+            texto_postagem = (
+                f"{gancho_topo}\n\n"
+                f"✅ {nome_prod}\n\n"
+                f"{bloco_preco}"
+                f"{trecho_cupom}"
+                f"🔗 {link_afiliado}\n\n"
+                "SetupDrop • #SetupGamer #Geek"
+            )
+            
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("🔗 VER NA LOJA / COMPRAR", url=link_afiliado))
+            
+            if imagem_url:
+                try:
+                    bot.send_photo(chat_id, photo=imagem_url, caption=texto_postagem, reply_markup=markup, parse_mode="Markdown")
+                except:
+                    bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            else:
+                bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
+            
+            HISTORICO_ENVIADOS.add(link_afiliado)
+            if len(HISTORICO_ENVIADOS) > 100:  # Aumentado o histórico para suportar muito mais volume
+                HISTORICO_ENVIADOS.pop()
+                
+            enviados_nesta_busca += 1
+            if enviados_nesta_busca >= 5:  # Aumentado de 3 para 5 produtos por lote de busca
+                break
+            time.sleep(0.4)
+            
+        if enviados_nesta_busca == 0:
+            bot.send_message(chat_id, f"⚠️ Produtos para '{termo_busca}' já foram enviados recentemente. Tente outro termo!", parse_mode="Markdown")
+    else:
+        bot.send_message(chat_id, f"⚠️ Nenhum resultado encontrado para '{termo_busca}'. Tente buscar com outras palavras-chave livres.", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda message: True)
+def processar_mensagem(message):
+    texto_usuario = message.text.strip()
+    
+    if "http://" in texto_usuario or "https://" in texto_usuario:
+        bot.reply_to(message, "🔄 Processando link...")
+        link_afiliado = expandir_link_shopee(texto_usuario)
+        texto_postagem = (
+            "SETUPDROP • ACHADINHO DESTAQUE ⚡\n\n"
+            "✅ Equipamento Selecionado\n\n"
+            "🔥 GARANTA O SEU COM ESSE PREÇO 🔥\n\n"
+            f"🔗 {link_afiliado}\n\n"
+            "SetupDrop"
+        )
+        FILA_RASCUNHOS.append(texto_postagem)
+        bot.send_message(message.chat.id, "📦 Adicionado à fila do SetupDrop!", parse_mode="Markdown")
+    else:
+        min_p, max_p = None, None  # Sem restrição de preço mínimo travado
+        termo_busca = texto_usuario
+        
+        if "|" in texto_usuario:
+            partes = [p.strip() for p in texto_usuario.split("|")]
+            termo_busca = partes[0]
+            for parte in partes[1:]:
+                if parte.lower().startswith("min:"):
+                    try:
+                        min_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+                elif parte.lower().startswith("max:"):
+                    try:
+                        max_p = float(parte.split(":")[1].strip())
+                    except:
+                        pass
+
+        bot.reply_to(message, f"⚡ Buscando ofertas amplas para: *{termo_busca}*...", parse_mode="Markdown")
+        produtos = consultar_shopee_avancado(termo_busca, min_price=min_p, max_price=max_p, sort_type=1)
+        processar_e_enviar_produtos(message.chat.id, produtos, termo_busca)
+
+if __name__ == "__main__":
+    t = Thread(target=run_web)
+    t.start()
+    print("Bot SetupDrop (Busca Flexível) iniciado com sucesso!")
+    bot.infinity_polling()
+                p_min = float(preco_raw)
                     economia = int(((p_max - p_min) / p_max) * 100)
                     de_formatado = formatar_preco(preco_max_raw)
                     bloco_preco = (
