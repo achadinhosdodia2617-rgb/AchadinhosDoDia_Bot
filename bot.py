@@ -315,7 +315,7 @@ if __name__ == "__main__":
     print("Bot SetupDrop iniciado com sucesso!")
     bot.infinity_polling()
 kup=markup, parse_mode="Markdown"
-            else:
+            
                 bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
             
             HISTORICO_ENVIADOS.add(link_afiliado)
