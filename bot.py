@@ -314,4 +314,4 @@ if __name__ == "__main__":
     t.start()
     print("Bot SetupDrop iniciado com sucesso!")
     bot.infinity_polling()
-    
+        
