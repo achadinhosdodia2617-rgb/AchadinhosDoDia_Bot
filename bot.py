@@ -314,7 +314,7 @@ if __name__ == "__main__":
     t.start()
     print("Bot SetupDrop iniciado com sucesso!")
     bot.infinity_polling()
-p=markup, parse_mode="Markdown")
+p=markup, parse_mode="Markdown"
             else:
                 bot.send_message(chat_id, texto_postagem, reply_markup=markup, parse_mode="Markdown")
             
